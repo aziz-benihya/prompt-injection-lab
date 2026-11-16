@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prompt-injection-lab"
+version = "1.0.0"
+description = "Attacking and defending an LLM agent against indirect prompt injection, with measured results."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Abdelaziz AIT BEN IHYA" }]
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["llm-security", "prompt-injection", "ai-agents", "owasp-llm", "red-teaming"]
+
+[project.optional-dependencies]
+claude = ["anthropic"]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+pilab = "lab.cli:main"
+
+[tool.setuptools]
+packages = ["lab"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # long attack strings and regexes are kept on one line on purpose
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

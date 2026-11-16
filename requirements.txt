@@ -1,0 +1,3 @@
+anthropic   # optional: only for run_claude.py
+pytest
+ruff
