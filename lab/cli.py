@@ -5,6 +5,8 @@
     pilab demo attack_09 --defense all  same, with every defense on
     pilab evaluate                      full results table
     pilab shell                         interactive lab: write your own attack
+    pilab trust                         multi-agent trust boundary results
+    pilab trust ma_attack_06 --defense labels
 """
 
 import argparse
@@ -145,6 +147,42 @@ def cmd_shell(_args, paint) -> int:
             print("unknown command, type 'help'")
 
 
+def cmd_trust(args, paint) -> int:
+    from pathlib import Path
+
+    from . import trust_boundary as tb
+
+    if args.scenario is None:
+        result = tb.table(tb.evaluate())
+        print(result)
+        Path("results").mkdir(exist_ok=True)
+        Path("results/trust_boundary.md").write_text(result + "\n")
+        print("\nSaved results/trust_boundary.md")
+        return 0
+    cases = {f"ma_attack_{i:02d}": doc for i, (_, doc) in enumerate(tb.ATTACKS, 1)}
+    cases |= {f"ma_benign_{i:02d}": doc for i, (_, doc, _) in enumerate(tb.BENIGN, 1)}
+    if args.scenario not in cases:
+        print("scenarios: " + ", ".join(cases), file=sys.stderr)
+        return 1
+    doc = cases[args.scenario]
+    published, boundary = tb.run_one(doc, tb.CONFIGS[TRUST_DEFENSES[args.defense]])
+    print(paint(BOLD, "\nPublic document: ") + doc)
+    print(paint(BOLD, "Defense:         ") + TRUST_DEFENSES[args.defense])
+    for b in boundary.blocked:
+        print(paint(GREEN, "  blocked  " + b))
+    for d in boundary.declassified:
+        print(paint(YELLOW, "  declassified  " + d))
+    print(paint(BOLD, "\nPublished newsletter"))
+    for line in published:
+        print("  " + line[:110])
+    verdict = paint(RED, "CONFIDENTIAL DATA LEAKED") if tb.leaked(published) else paint(GREEN, "no confidential data published")
+    print(paint(BOLD, "\nResult: ") + verdict + "\n")
+    return 0
+
+
+TRUST_DEFENSES = {"none": "none", "dlp": "T1 DLP filter", "labels": "T2 label propagation", "all": "T1 + T2"}
+
+
 def main(argv=None) -> int:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--no-color", action="store_true", help="disable colored output")
@@ -156,9 +194,12 @@ def main(argv=None) -> int:
     p.add_argument("--defense", choices=list(DEFENSES), default="none")
     sub.add_parser("evaluate", help="run the full evaluation", parents=[common])
     sub.add_parser("shell", help="interactive lab", parents=[common])
+    t = sub.add_parser("trust", help="multi-agent trust boundary experiment", parents=[common])
+    t.add_argument("scenario", nargs="?", help="e.g. ma_attack_06; omit for the full table")
+    t.add_argument("--defense", choices=list(TRUST_DEFENSES), default="none")
     args = parser.parse_args(argv)
     paint = _color(not args.no_color and sys.stdout.isatty())
-    return {"list": cmd_list, "demo": cmd_demo, "evaluate": cmd_evaluate, "shell": cmd_shell}[args.command](args, paint)
+    return {"list": cmd_list, "demo": cmd_demo, "evaluate": cmd_evaluate, "shell": cmd_shell, "trust": cmd_trust}[args.command](args, paint)
 
 
 if __name__ == "__main__":
